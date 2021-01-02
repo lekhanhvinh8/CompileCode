@@ -1,0 +1,168 @@
+﻿@model TVSWeb_Cloud.Models.dtos.QuestionDto
+@using TVSWeb_Cloud.Models
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Code Screen</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" type="text/css" href="~/Content/bootstrap.css" />
+    <link rel="stylesheet" href="~/assets/css/main.css" />
+    <link rel="stylesheet" href="~/style.css">
+    <noscript><link rel="stylesheet" href="~/assets/css/noscript.css" /></noscript>
+</head>
+<body>
+    <div class="fluid-container">
+        <div class="question-window">
+            <div class="container question-navbar">
+                <a href="/Home/Index/">
+                    <i class="fas fa-home"> Home</i>
+                </a>
+                <span>|</span>
+                <a href="/Home/Choosejava/">
+                    <i class="fas fa-retweet"> Choose</i>
+                </a>
+                <span>|</span>
+                <a href="/Home/Index/">
+                    <i class="fab fa-twitch"> Help</i>
+                </a>
+            </div>
+            <form action="">
+                <div class="field">
+                    <div class="fields">
+                        <div class="field question-area">
+                            <label class="question-title" style="color: black; text-align: center;">@Html.DisplayFor(model => model.QuestionTitle)</label>
+                            <textarea name="question-content" style="color: black" rows="20" class="question-content" disabled="disabled">@Html.DisplayFor(model => model.QuestionContent)</textarea>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+        </div>
+
+        <div class="br"></div>
+
+        <div class="main-content">
+            <div class="code-window">
+                <div class="field">
+                    <form id="form-code" method="post" action="#">
+                        <div class="fields">
+                            <div class="field">
+                                <label for="inputCode" style="text-align: center;">Input</label>
+                                <textarea name="inputNameSpace" id="input-namespace" rows="4"></textarea>
+                                <input type="text" id="input-className" name="inputClassName" disabled/>
+                                <textarea name="inputCode" id="input-code" rows="20" style="white-space: pre-wrap; white-space: pre-line;">public static void Main(String[] agrs)&#13;&#10;{&#13;&#10;}</textarea>
+                                <input type="text" disabled value="}" />
+                            </div>
+                            <div class="field">
+                                <textarea name="inputVariable" id="input-variable" rows="2" placeholder="nhập biến"></textarea>
+                            </div>
+                        </div>
+                        <ul class="actions">
+                            <li style="padding: 0 45% 0 45%;"><input type="button" id="btn-run" value="Run" class="primary" /></li>
+                            <!-- <li><input type="submit" value="Reset" class="primary" /></li> -->
+                        </ul>
+                    </form>
+                </div>
+            </div>
+            <div class="result-window">
+                <div class="field">
+                    <div class="fields">
+                        <div class="field">
+                            <label for="result" style="text-align: center;">Result</label>
+                            <textarea name="result" id="result" rows="27" disabled="disabled">Kết quả hiển thị ở đây</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="~/assets/js/jquery.min.js"></script>
+    <script src="~/assets/js/browser.min.js"></script>
+    <script src="~/assets/js/breakpoints.min.js"></script>
+    <script src="~/assets/js/util.js"></script>
+    <script src="~/assets/js/main.js"></script>
+    <script src="~/Scripts/bootstrap.js"></script>
+    <script src="~/Scripts/bootbox.js"></script>
+
+    <script>
+        $(document).ready(function () {
+
+            var model = @Html.Raw(Json.Encode(Model));
+            var monoContainerName = @Html.Raw(Json.Encode(ConfigurationDocker.MonoContainerName));
+            var openjdkContainerName = @Html.Raw(Json.Encode(ConfigurationDocker.OpenjdkContainerName));
+            var storagePathInContainer = @Html.Raw(Json.Encode(ConfigurationDocker.StoragePathInContainer));
+
+            console.log(model);
+
+            if (model.TypeName == 'c#') {
+                $("#input-namespace").val("using System;");
+                $("#input-className").val("public class ClassName {");
+                $("#input-code").val("public static void Main(String[] agrs)\n{\n}");
+            }
+            else if (model.TypeName == 'java') {
+                $("#input-namespace").val("import java.lang.*;");
+                $("#input-className").val("class ClassName {");
+                $("#input-code").val("public static void main(String[] agrs)\n{\n}");
+            }
+
+            $("#input-code").keydown(function (e) {
+                if (e.key == 'Tab') {
+                    e.preventDefault();
+                    var start = this.selectionStart;
+                    var end = this.selectionEnd;
+
+                    // set textarea value to: text before caret + tab + text after caret
+                    this.value = this.value.substring(0, start) +
+                        "\t" + this.value.substring(end);
+
+                    // put caret at right position again
+                    this.selectionStart =
+                        this.selectionEnd = start + 1;
+                }
+            });
+
+            $("#btn-run").on("click", function () {
+                //var inputNamespace = JSON.stringify($("#input-namespace").val());
+                //var inputCode = JSON.stringify($("#input-code").val());
+
+                var inputNamespace = encodeURIComponent($("#input-namespace").val());
+                var inputCode = encodeURIComponent($("#input-code").val());
+
+                //inputNamespace = JSON.stringify(inputNamespace);
+                //inputCode = JSON.stringify(inputCode);
+
+                $("#result").val("Loading......");
+
+                if (model.TypeName == 'c#') {
+                    $.ajax({
+                        url: '/api/CodeExecution/RunCSharpCode?nameSpaces=' + inputNamespace + '&codeContent=' + inputCode,
+                        method: "get",
+                        success: function (response) {
+                            $("#result").val(response);
+                        },
+                    });
+                } else if (model.TypeName == 'java') {
+                    $.ajax({
+                        url: '/api/CodeExecution/RunJavaCode?nameSpaces=' + inputNamespace + '&codeContent=' + inputCode,
+                        method: "get",
+                        success: function (response) {
+                            $("#result").val(response);
+                        },
+                    });
+                }
+
+            });
+
+        });
+
+
+    </script>
+</body>
+</html>
